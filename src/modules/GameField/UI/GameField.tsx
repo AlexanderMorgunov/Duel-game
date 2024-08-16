@@ -1,12 +1,23 @@
 import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import image from "../assets/fone.png";
+import { SettingsModal } from "./SettingsModal";
+import { IoSettingsOutline } from "react-icons/io5";
+import { UiButton } from "./UiButton";
+
+const StyledWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  height: 100%;
+`;
 
 // Стили для канваса
 const StyledCanvas = styled.canvas`
   background-image: url(${image});
   width: 100%;
-  height: 100%;
+  height: 100vh;
   background-size: contain;
 `;
 
@@ -31,22 +42,17 @@ const StyledScoreboard = styled.div`
   font-size: 20px;
 `;
 
-const StyledWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  .canvas-wrapper {
-    width: 80%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-  }
+const StyledMenu = styled.div`
+  position: absolute;
+  top: 30px;
+  right: 50px;
+  border-radius: 5px;
+  transform: translate(-50%, -50%);
+  font-weight: bold;
+  font-size: 20px;
 `;
 
-const StyledCanvasWrapper = styled.div``;
+// const StyledCanvasWrapper = styled.div``;
 
 const GameField = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -56,10 +62,15 @@ const GameField = () => {
     player1: 0,
     player2: 0,
   });
+  const [isOpenSettingsModal, setIsOpenSettingsModal] =
+    useState<boolean>(false);
+  const [gameStatus, setGameStatus] = useState<GameStatus>("play");
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");
+
+    console.log(gameStatus);
 
     if (canvas && context) {
       // Настройки канваса
@@ -68,14 +79,16 @@ const GameField = () => {
 
       const players = initPlayers(canvas, setSelectedPlayer);
       const effects: Effect[] = [];
-      startGameLoop(
-        context,
-        canvas,
-        players,
-        setSelectedPlayer,
-        setScores,
-        effects
-      );
+      if (gameStatus === "play")
+        startGameLoop(
+          gameStatus,
+          context,
+          canvas,
+          players,
+          setSelectedPlayer,
+          setScores,
+          effects
+        );
     }
   }, []);
 
@@ -93,47 +106,59 @@ const GameField = () => {
   };
 
   return (
-    <StyledWrapper>
-      <StyledCanvasWrapper>
-        {" "}
+    <>
+      <StyledWrapper>
         <StyledCanvas ref={canvasRef}></StyledCanvas>
-      </StyledCanvasWrapper>
-
-      <StyledScoreboard>
-        {scores.player1} | {scores.player2}
-      </StyledScoreboard>
-      {selectedPlayer && (
-        <StyledPlayerSettings>
-          <h3>Настройки игрока {selectedPlayer.name}</h3>
-          <div>
+        <StyledScoreboard>
+          {scores.player1} | {scores.player2}
+        </StyledScoreboard>
+        {selectedPlayer && (
+          <StyledPlayerSettings>
+            <h3>Настройки игрока {selectedPlayer.name}</h3>
             <div>
-              <label htmlFor="color">Цвет заклинаний: </label>
-              <input
-                type="color"
-                id="color"
-                value={spellColor}
-                onChange={(e) => handleColorChange(e.target.value)}
-              />
+              <div>
+                <label htmlFor="color">Цвет заклинаний: </label>
+                <input
+                  type="color"
+                  id="color"
+                  value={spellColor}
+                  onChange={(e) => handleColorChange(e.target.value)}
+                />
+              </div>
+              <div>
+                <label htmlFor="speed">Скорость передвижения: </label>
+                <input
+                  type="range"
+                  id="speed"
+                  value={selectedPlayer.speed}
+                  min={1}
+                  max={50}
+                  onChange={(e) => handleChangePlayerSpeed(+e.target.value)}
+                />
+              </div>
+              <div>
+                <label htmlFor="shootSpeed">Скорость выстрела: </label>
+                <input type="range" id="shootSpeed" />
+              </div>
             </div>
-            <div>
-              <label htmlFor="speed">Скорость передвижения: </label>
-              <input
-                type="range"
-                id="speed"
-                value={selectedPlayer.speed}
-                min={1}
-                max={50}
-                onChange={(e) => handleChangePlayerSpeed(+e.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="shootSpeed">Скорость выстрела: </label>
-              <input type="range" id="shootSpeed" />
-            </div>
-          </div>
-        </StyledPlayerSettings>
+          </StyledPlayerSettings>
+        )}
+      </StyledWrapper>
+      <StyledMenu>
+        <UiButton
+          variant="outlined"
+          onClick={() => {
+            setGameStatus("pause");
+            setIsOpenSettingsModal(true);
+          }}
+        >
+          <IoSettingsOutline />
+        </UiButton>
+      </StyledMenu>
+      {isOpenSettingsModal && (
+        <SettingsModal setIsOpen={setIsOpenSettingsModal} />
       )}
-    </StyledWrapper>
+    </>
   );
 };
 
@@ -164,6 +189,7 @@ const initPlayers = (
 
 // Игровой цикл
 const startGameLoop = (
+  gameStatus: GameStatus,
   context: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   players: Player[],
@@ -173,6 +199,7 @@ const startGameLoop = (
   >,
   effects: Effect[]
 ) => {
+  if (gameStatus == "pause") return;
   let mouseX = 0;
   let mouseY = 0;
 
@@ -451,5 +478,7 @@ interface Effect {
   maxRadius: number;
   opacity: number;
 }
+
+type GameStatus = "play" | "pause" | "win";
 
 export { GameField };
