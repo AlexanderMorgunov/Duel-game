@@ -57,7 +57,6 @@ const StyledMenu = styled.div`
 const GameField = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
-  // const [spellColor, setSpellColor] = useState<string>("blue");
   const [scores, setScores] = useState<{ player1: number; player2: number }>({
     player1: 0,
     player2: 0,
@@ -66,6 +65,7 @@ const GameField = () => {
     useState<boolean>(false);
   const [gameStatus, setGameStatus] = useState<GameStatus>("play");
   const [playersSpeed, setPlayersSpeed] = useState<Array<number>>([2, 2]);
+  const [shootSpeed, setShootSpeed] = useState<Array<number>>([1000, 1000]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -78,7 +78,7 @@ const GameField = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
 
-      const players = initPlayers(canvas, setSelectedPlayer);
+      const players = initPlayers(canvas, setSelectedPlayer, shootSpeed);
       const effects: Effect[] = [];
       if (gameStatus === "play") {
         startGameLoop(
@@ -88,7 +88,8 @@ const GameField = () => {
           players,
           setSelectedPlayer,
           setScores,
-          effects
+          effects,
+          shootSpeed
         );
       }
     }
@@ -101,12 +102,6 @@ const GameField = () => {
     }
   };
 
-  // const handleChangePlayerSpeed = (speed: number) => {
-  //   if (selectedPlayer) {
-  //     selectedPlayer.speed = speed;
-  //   }
-  // };
-
   const handleChangePlayerSpeed = (speed: number) => {
     if (selectedPlayer) {
       setPlayersSpeed(() => {
@@ -115,6 +110,18 @@ const GameField = () => {
         return newPlayersSpeed;
       });
       selectedPlayer.speed = speed;
+    }
+  };
+
+  const handleChangeShootSpeed = (speed: number) => {
+    if (selectedPlayer) {
+      setShootSpeed(() => {
+        const newShootSpeed = [...shootSpeed];
+        newShootSpeed[selectedPlayer.id] = speed;
+        return newShootSpeed;
+      });
+      console.log(shootSpeed);
+      selectedPlayer.shootSpeed = speed;
     }
   };
 
@@ -155,7 +162,14 @@ const GameField = () => {
               </div>
               <div>
                 <label htmlFor="shootSpeed">Скорость выстрела: </label>
-                <input type="range" id="shootSpeed" />
+                <input
+                  type="range"
+                  id="shootSpeed"
+                  min={100}
+                  max={5000}
+                  onChange={(e) => handleChangeShootSpeed(+e.target.value)}
+                  value={shootSpeed[selectedPlayer.id]}
+                />
               </div>
             </div>
           </StyledPlayerSettings>
@@ -182,23 +196,26 @@ const GameField = () => {
 // Инициализация игроков
 const initPlayers = (
   canvas: HTMLCanvasElement,
-  setSelectedPlayer: React.Dispatch<React.SetStateAction<Player | null>>
+  setSelectedPlayer: React.Dispatch<React.SetStateAction<Player | null>>,
+  shootSpeed: Array<number>
 ): Player[] => {
   const player1 = createPlayer(
     60,
     canvas.height / 2,
     "blue",
     setSelectedPlayer,
-    1,
-    "Синий"
+    0,
+    "Синий",
+    shootSpeed[0]
   );
   const player2 = createPlayer(
     canvas.width - 60,
     canvas.height / 2,
     "red",
     setSelectedPlayer,
-    2,
-    "Красный"
+    1,
+    "Красный",
+    shootSpeed[1]
   );
 
   return [player1, player2];
@@ -214,7 +231,8 @@ const startGameLoop = (
   setScores: React.Dispatch<
     React.SetStateAction<{ player1: number; player2: number }>
   >,
-  effects: Effect[]
+  effects: Effect[],
+  shootSpeed: Array<number>
 ) => {
   if (gameStatus == "pause") return;
   let mouseX = 0;
@@ -234,7 +252,8 @@ const startGameLoop = (
         players,
         setScores,
         effects,
-        gameStatus
+        gameStatus,
+        shootSpeed
       );
     });
 
@@ -272,7 +291,8 @@ const createPlayer = (
   color: string,
   setSelectedPlayer: React.Dispatch<React.SetStateAction<Player | null>>,
   id: number,
-  name: string
+  name: string,
+  shootSpeedInterval: number
 ): Player => {
   const player: Player = {
     x,
@@ -287,10 +307,11 @@ const createPlayer = (
     score: 0,
     name,
     isHit: false,
+    shootSpeed: shootSpeedInterval,
   };
 
   // Интервал стрельбы
-  setInterval(() => shootSpell(player), 1000);
+  setInterval(() => shootSpell(player), shootSpeedInterval);
 
   return player;
 };
@@ -307,7 +328,8 @@ const updatePlayer = (
     React.SetStateAction<{ player1: number; player2: number }>
   >,
   effects: Effect[],
-  gameStatus: GameStatus
+  gameStatus: GameStatus,
+  shootSpeed: Array<number>
 ) => {
   if (gameStatus !== "play") return;
   // Движение игрока
@@ -351,6 +373,8 @@ const updatePlayer = (
     if (spell.x + spell.radius < 0 || spell.x - spell.radius > canvas.width) {
       player.spells.splice(index, 1);
     }
+
+    player.shootSpeed = shootSpeed[player.id];
   });
 
   drawPlayer(player, context);
@@ -480,6 +504,7 @@ interface Player {
   score: number;
   name: string;
   isHit: boolean;
+  shootSpeed: number;
 }
 
 interface Spell {
