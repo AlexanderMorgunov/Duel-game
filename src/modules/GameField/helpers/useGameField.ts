@@ -35,7 +35,7 @@ export const useGameField = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
 
-      const players = initPlayers(canvas, setSelectedPlayer, shootingSpeeds);
+      const players = initPlayers(canvas, shootingSpeeds);
       playersRef.current = players;
       const effects: Effect[] = [];
       if (gameStatus === "play") {
@@ -180,14 +180,12 @@ export const useGameField = () => {
   // Инициализация игроков
   const initPlayers = (
     canvas: HTMLCanvasElement,
-    setSelectedPlayer: React.Dispatch<React.SetStateAction<Player | null>>,
     shootingSpeeds: Array<number>
   ): Player[] => {
     const player1 = createPlayer(
       60,
       canvas.height / 2,
       "blue",
-      setSelectedPlayer,
       1,
       "Синий",
       shootingSpeeds
@@ -196,7 +194,6 @@ export const useGameField = () => {
       canvas.width - 60,
       canvas.height / 2,
       "red",
-      setSelectedPlayer,
       2,
       "Красный",
       shootingSpeeds
@@ -269,7 +266,6 @@ export const useGameField = () => {
     x: number,
     y: number,
     color: string,
-    setSelectedPlayer: React.Dispatch<React.SetStateAction<Player | null>>,
     id: number,
     name: string,
     shootingSpeeds: number[]
