@@ -73,7 +73,6 @@ export const useGameField = () => {
   //
 
   useEffect(() => {
-    console.log(gameStatus);
     if (gameStatus === "pause" || gameStatus === "win") {
       // Остановка всех интервалов стрельбы
       playersRef.current.forEach((player) => {
@@ -149,12 +148,14 @@ export const useGameField = () => {
 
   const winnerText = useMemo(() => {
     if (gameStatus === "win" || gameStatus === "idle") {
-      if (scores.player1 === scores.player2) {
+      if (scores.player1 >= 5 && scores.player1 === scores.player2) {
         return "Ничья";
       }
-      return scores.player1 > scores.player2
-        ? "Выиграл игрок Синий"
-        : "Выиграл игрок Красный";
+      if (scores.player1 >= 5 || scores.player2 >= 5) {
+        return scores.player1 > scores.player2
+          ? "Выиграл игрок Синий"
+          : "Выиграл игрок Красный";
+      }
     }
     return "";
   }, [gameStatus]);
@@ -259,7 +260,6 @@ export const useGameField = () => {
     canvas.addEventListener("click", handleCanvasClick);
 
     if (gameStatus != "pause") animate();
-    console.log(players);
   };
 
   const createPlayer = (
