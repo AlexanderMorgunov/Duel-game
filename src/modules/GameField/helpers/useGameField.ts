@@ -167,7 +167,6 @@ export const useGameField = () => {
       player.shootInterval = undefined;
     });
     playersRef.current = [];
-
     setIsNewGameModalOpen(false);
     setScores({ player1: 0, player2: 0 });
     setSelectedPlayer(null);

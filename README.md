@@ -1,50 +1,33 @@
-# React + TypeScript + Vite
+# Duel-game:
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Игра на основе React и canvas
 
-Currently, two official plugins are available:
+- [Деплой](https://duel-game-mu.vercel.app/)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Стек:
 
-## Expanding the ESLint configuration
+- React
+- TypeScript
+- styled components
+- canvas
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+## Запуск
 
-- Configure the top-level `parserOptions` property like this:
+Проект создан на основе [Vite](https://vitejs.dev/). Для запуска приложения нужно:
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+- "подтянуть" зависимости командой `npm install` или `yarn`
+- выполнить команду `npm run dev` или `yarn run dev` для запуска сервера
+- приложение доступно по `http://localhost:5173/`
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+### Основные механики:
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
+1.  **Движение**: Игроки движутся автоматически по вертикали (вверх и вниз). Игрок может изменить направление движения, если столкнется с мышью.
+2.  **Стрельба заклинаниями**: Каждый игрок регулярно выпускает заклинания в сторону противника. Скорость стрельбы зависит от настройки и может изменяться в процессе игры.
+3.  **Попадания и счет**: Если заклинание одного игрока попадает в другого, игроку, выпустившему заклинание, начисляется очко. Цель — набрать 5 очков, чтобы выиграть матч.
+4.  **Настройка игрока**: Пользователь может выбрать игрока, изменять его скорость движения, скорость стрельбы и цвет заклинаний через специальное меню.
+5.  **Эффекты**: При попадании заклинания по игроку отображается визуальный эффект, а игрок временно меняет свое выражение на «недовольное».
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```
+### Победа:
+
+- Победа достигается, когда один из игроков набирает 5 очков. В случае ничьей показывается соответствующее сообщение, и игра завершается.
+- После окончания игры открывается окно с предложением начать новую игру.
