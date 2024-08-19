@@ -2,14 +2,25 @@ import { FC } from "react";
 import { UiModal } from "./UiModal";
 import styled from "styled-components";
 import { UiButton } from "./UiButton";
+// import { Player } from "../types/Player";
 
 interface Props {
-  setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  // setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  onClose: () => void;
+  playersSpeed: number[];
+  // setPlayersSpeed: React.Dispatch<React.SetStateAction<number[]>>;
+  // shootingSpeeds: number[];
+  setShootingSpeeds: React.Dispatch<React.SetStateAction<number[]>>;
+  // playersRef: React.MutableRefObject<Player[]>;
+  handleChangePlayerSpeed: (speed: number, id?: number) => void;
+  shootingSpeeds: number[];
+  handleChangeShootSpeed: (speed: number, id?: number) => void;
+  playersSpellsColor: string[];
+  handleColorChange: (color: string, id?: number) => void;
 }
 
 const StyledSettingsModal = styled.div`
   width: 400px;
-  //   height: 300px;
   background-color: #fff;
   border-radius: 20px;
   position: absolute;
@@ -41,7 +52,16 @@ const StyledSettingsModal = styled.div`
   }
 `;
 
-const SettingsModal: FC<Props> = ({ setIsOpen }) => {
+const SettingsModal: FC<Props> = ({
+  playersSpeed,
+  // playersRef,
+  handleChangePlayerSpeed,
+  onClose,
+  shootingSpeeds,
+  handleChangeShootSpeed,
+  playersSpellsColor,
+  handleColorChange,
+}) => {
   return (
     <UiModal>
       <StyledSettingsModal>
@@ -55,18 +75,27 @@ const SettingsModal: FC<Props> = ({ setIsOpen }) => {
             <input
               type="range"
               id="speed"
-              value={2}
+              value={playersSpeed[0]}
               min={1}
               max={50}
-              //   onChange={(e) => handleChangePlayerSpeed(+e.target.value)}
+              onChange={(e) => handleChangePlayerSpeed(+e.target.value, 0)}
             />
             <label htmlFor="shootSpeed">Скорость выстрела: </label>
-            <input type="range" id="shootSpeed" />
+            <input
+              type="range"
+              id="shootSpeed"
+              value={2050 - shootingSpeeds[0]}
+              min={100}
+              max={2000}
+              step={50}
+              onChange={(e) => handleChangeShootSpeed(+e.target.value, 0)}
+            />
             <label htmlFor="color">Цвет заклинаний: </label>
             <input
               type="color"
               id="color"
-              value={"blue"}
+              value={playersSpellsColor[0]}
+              onChange={(e) => handleColorChange(e.target.value, 0)}
               //   onChange={(e) => handleColorChange(e.target.value)}
             />
           </div>
@@ -76,23 +105,35 @@ const SettingsModal: FC<Props> = ({ setIsOpen }) => {
             <input
               type="range"
               id="speed"
-              value={2}
+              value={playersSpeed[1]}
               min={1}
               max={50}
+              onChange={(e) => handleChangePlayerSpeed(+e.target.value, 1)}
               //   onChange={(e) => handleChangePlayerSpeed(+e.target.value)}
             />
             <label htmlFor="shootSpeed">Скорость выстрела: </label>
-            <input type="range" id="shootSpeed" />
+            <input
+              type="range"
+              id="shootSpeed"
+              min={100}
+              max={2000}
+              step={50}
+              value={2050 - shootingSpeeds[1]}
+              onChange={(e) => handleChangeShootSpeed(+e.target.value, 1)}
+            />
             <label htmlFor="color">Цвет заклинаний: </label>
             <input
               type="color"
               id="color"
-              value={"blue"}
+              // value={"blue"}
+              value={playersSpellsColor[0]}
+              onChange={(e) => handleColorChange(e.target.value, 1)}
+
               //   onChange={(e) => handleColorChange(e.target.value)}
             />
           </div>
         </div>
-        <UiButton type="submit" onClick={() => setIsOpen(false)}>
+        <UiButton type="submit" onClick={() => onClose()}>
           Ок
         </UiButton>
       </StyledSettingsModal>

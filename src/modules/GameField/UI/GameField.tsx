@@ -1,9 +1,14 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import image from "../assets/fone.png";
 import { SettingsModal } from "./SettingsModal";
 import { IoSettingsOutline } from "react-icons/io5";
 import { UiButton } from "./UiButton";
+import { Player } from "../types/Player";
+import { GameStatus } from "../types/GameStatus";
+import { Effect } from "../types/Effect";
+import { Spell } from "../types/Spell";
+import { NewGameModal } from "./NewGameModal";
 
 const StyledWrapper = styled.div`
   display: flex;
@@ -64,21 +69,30 @@ const GameField = () => {
   });
   const [isOpenSettingsModal, setIsOpenSettingsModal] =
     useState<boolean>(false);
-  const [gameStatus, setGameStatus] = useState<GameStatus>("play");
+  const [gameStatus, setGameStatus] = useState<GameStatus>("idle");
   const [playersSpeed, setPlayersSpeed] = useState<Array<number>>([2, 2]);
+  const [shootingSpeeds, setShootingSpeeds] = useState<Array<number>>([
+    1000, 1000,
+  ]); // Время в миллисекундах между выстрелами для каждого игрока
+  const [playersSpellsColor, setPlayersSpellsColor] = useState<string[]>([
+    "blue",
+    "red",
+  ]);
+  const playersRef = useRef<Player[]>([]);
+  const [isNewGameModalOpen, setIsNewGameModalOpen] = useState<boolean>(true);
 
-  useEffect(() => {
+  const startGame = () => {
+    setGameStatus("play");
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");
-
-    console.log(gameStatus);
 
     if (canvas && context) {
       // Настройки канваса
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
 
-      const players = initPlayers(canvas, setSelectedPlayer);
+      const players = initPlayers(canvas, setSelectedPlayer, shootingSpeeds);
+      playersRef.current = players;
       const effects: Effect[] = [];
       if (gameStatus === "play") {
         startGameLoop(
@@ -92,35 +106,135 @@ const GameField = () => {
         );
       }
     }
-  }, []);
-
-  const handleColorChange = (color: string) => {
-    if (selectedPlayer) {
-      selectedPlayer.spellColor = color;
-      // setSpellColor(color);
-    }
   };
 
-  // const handleChangePlayerSpeed = (speed: number) => {
-  //   if (selectedPlayer) {
-  //     selectedPlayer.speed = speed;
-  //   }
-  // };
+  useEffect(() => {
+    const isWinner = Object.values(scores).some((score) => score === 5);
+    if (isWinner) {
+      setGameStatus("win");
+    }
+  }, [scores]);
 
-  const handleChangePlayerSpeed = (speed: number) => {
-    if (selectedPlayer) {
+  useEffect(() => {
+    if (gameStatus === "win") {
+      console.log("Game over, restarting...");
+      setGameStatus("idle"); // Сбрасываем статус игры до начального состояния
+      setIsNewGameModalOpen(true); // Открываем модальное окно для начала новой игры
+    }
+  }, [gameStatus]);
+
+  useEffect(() => {
+    if (isNewGameModalOpen) return;
+    startGame();
+  }, [isNewGameModalOpen]);
+  //
+
+  useEffect(() => {
+    console.log(gameStatus);
+    if (gameStatus === "pause" || gameStatus === "win") {
+      // Остановка всех интервалов стрельбы
+      playersRef.current.forEach((player) => {
+        clearInterval(player.shootInterval);
+        player.shootInterval = undefined;
+        player.speed = 0;
+      });
+    } else if (gameStatus === "play") {
+      // Возобновление интервалов стрельбы
+      playersRef.current.forEach((player, index) => {
+        if (!player.shootInterval) {
+          player.shootInterval = setInterval(
+            () => shootSpell(player),
+            shootingSpeeds[index]
+          );
+        }
+        player.speed = playersSpeed[index];
+      });
+    }
+  }, [gameStatus, shootingSpeeds]);
+
+  const handleColorChange = (color: string, id?: number) => {
+    const player =
+      id !== undefined ? playersRef.current[id] : (selectedPlayer as Player);
+    player.spellColor = color;
+    const newPlayersSpellColor = [...playersSpellsColor];
+    newPlayersSpellColor[player.id] = color;
+    setPlayersSpellsColor(newPlayersSpellColor);
+  };
+
+  const handleChangePlayerSpeed = (speed: number, id?: number) => {
+    if (selectedPlayer || id !== undefined) {
       setPlayersSpeed(() => {
         const newPlayersSpeed = [...playersSpeed];
-        newPlayersSpeed[selectedPlayer.id] = speed;
+        newPlayersSpeed[
+          id !== undefined ? id : (selectedPlayer?.id as number)
+        ] = speed;
         return newPlayersSpeed;
       });
-      selectedPlayer.speed = speed;
+      if (selectedPlayer) selectedPlayer.speed = speed;
     }
   };
 
-  // useEffect(() => {
-  //   player1.speed = 0
-  // }, [gameStatus]);
+  const handleChangeShootSpeed = (speed: number, id?: number) => {
+    if (selectedPlayer || id !== undefined) {
+      setShootingSpeeds(() => {
+        const newShootingSpeeds = [...shootingSpeeds];
+        // newShootingSpeeds[selectedPlayer.id - 1] = 2050 - speed;
+
+        newShootingSpeeds[
+          id !== undefined ? id : (selectedPlayer?.id as number)
+        ] = 2050 - speed;
+
+        // Перезапуск интервала для стрельбы с новой скоростью
+        const interval =
+          id !== undefined
+            ? playersRef.current[id].shootInterval
+            : (selectedPlayer?.shootInterval as NodeJS.Timeout);
+        clearInterval(interval);
+
+        const player =
+          id !== undefined
+            ? playersRef.current[id]
+            : (selectedPlayer as Player);
+
+        player.shootInterval = setInterval(
+          () => shootSpell(player),
+          2050 - speed
+        );
+
+        return newShootingSpeeds;
+      });
+    }
+  };
+
+  const winnerText = useMemo(() => {
+    if (gameStatus === "win" || gameStatus === "idle") {
+      if (scores.player1 === scores.player2) {
+        return "Ничья";
+      }
+      return scores.player1 > scores.player2
+        ? "Выиграл игрок Синий"
+        : "Выиграл игрок Красный";
+    }
+    return "";
+  }, [gameStatus]);
+
+  const handleStartNewGame = () => {
+    // Сбрасываем состояние игроков
+    playersRef.current.forEach((player) => {
+      clearInterval(player.shootInterval);
+      player.shootInterval = undefined;
+    });
+    playersRef.current = [];
+
+    setIsNewGameModalOpen(false);
+    setScores({ player1: 0, player2: 0 });
+    setSelectedPlayer(null);
+    setShootingSpeeds([1000, 1000]);
+    setPlayersSpeed([2, 2]); // значение скорости, соответствующее начальной настройке
+    setPlayersSpellsColor(["blue", "red"]);
+    setGameStatus("play");
+    startGame(); // Запускаем новую игру
+  };
 
   return (
     <>
@@ -138,7 +252,7 @@ const GameField = () => {
                 <input
                   type="color"
                   id="color"
-                  value={selectedPlayer.spellColor}
+                  value={playersSpellsColor[selectedPlayer.id]}
                   onChange={(e) => handleColorChange(e.target.value)}
                 />
               </div>
@@ -155,7 +269,15 @@ const GameField = () => {
               </div>
               <div>
                 <label htmlFor="shootSpeed">Скорость выстрела: </label>
-                <input type="range" id="shootSpeed" />
+                <input
+                  type="range"
+                  id="shootSpeed"
+                  min={100}
+                  max={2000}
+                  step={50}
+                  value={2050 - shootingSpeeds[selectedPlayer.id]}
+                  onChange={(e) => handleChangeShootSpeed(+e.target.value)}
+                />
               </div>
             </div>
           </StyledPlayerSettings>
@@ -173,7 +295,28 @@ const GameField = () => {
         </UiButton>
       </StyledMenu>
       {isOpenSettingsModal && (
-        <SettingsModal setIsOpen={setIsOpenSettingsModal} />
+        <SettingsModal
+          onClose={() => {
+            setIsOpenSettingsModal(false);
+            setGameStatus("play");
+          }}
+          setShootingSpeeds={setShootingSpeeds}
+          handleChangePlayerSpeed={handleChangePlayerSpeed}
+          playersSpeed={playersSpeed}
+          shootingSpeeds={shootingSpeeds}
+          handleChangeShootSpeed={handleChangeShootSpeed}
+          playersSpellsColor={playersSpellsColor}
+          handleColorChange={handleColorChange}
+        />
+      )}
+      {/* {gameStatus === "win" && (
+        <NewGameModal title={winnerText} onClick={handleStartNewGame} />
+      )} */}
+      {(gameStatus === "idle" || gameStatus === "win") && (
+        <NewGameModal
+          title={winnerText ? winnerText : "Новая игра"}
+          onClick={handleStartNewGame}
+        />
       )}
     </>
   );
@@ -182,7 +325,8 @@ const GameField = () => {
 // Инициализация игроков
 const initPlayers = (
   canvas: HTMLCanvasElement,
-  setSelectedPlayer: React.Dispatch<React.SetStateAction<Player | null>>
+  setSelectedPlayer: React.Dispatch<React.SetStateAction<Player | null>>,
+  shootingSpeeds: Array<number>
 ): Player[] => {
   const player1 = createPlayer(
     60,
@@ -190,7 +334,8 @@ const initPlayers = (
     "blue",
     setSelectedPlayer,
     1,
-    "Синий"
+    "Синий",
+    shootingSpeeds
   );
   const player2 = createPlayer(
     canvas.width - 60,
@@ -198,7 +343,8 @@ const initPlayers = (
     "red",
     setSelectedPlayer,
     2,
-    "Красный"
+    "Красный",
+    shootingSpeeds
   );
 
   return [player1, player2];
@@ -216,13 +362,12 @@ const startGameLoop = (
   >,
   effects: Effect[]
 ) => {
-  if (gameStatus == "pause") return;
+  // if (gameStatus == "pause") return;
   let mouseX = 0;
   let mouseY = 0;
 
   const animate = () => {
     context.clearRect(0, 0, canvas.width, canvas.height);
-
     // Обновление и отрисовка игроков
     players.forEach((player) => {
       updatePlayer(
@@ -262,17 +407,48 @@ const startGameLoop = (
   canvas.addEventListener("mousemove", handleMouseMove);
   canvas.addEventListener("click", handleCanvasClick);
 
-  animate();
+  if (gameStatus != "pause") animate();
+  console.log(players);
 };
 
 // Создание игрока
+// const createPlayer = (
+//   x: number,
+//   y: number,
+//   color: string,
+//   setSelectedPlayer: React.Dispatch<React.SetStateAction<Player | null>>,
+//   id: number,
+//   name: string
+// ): Player => {
+//   const player: Player = {
+//     x,
+//     y,
+//     radius: 30,
+//     color,
+//     speed: 2,
+//     direction: 1,
+//     spellColor: color,
+//     spells: [],
+//     id,
+//     score: 0,
+//     name,
+//     isHit: false,
+//   };
+
+//   // Интервал стрельбы
+//   setInterval(() => shootSpell(player), 1000);
+
+//   return player;
+// };
+
 const createPlayer = (
   x: number,
   y: number,
   color: string,
   setSelectedPlayer: React.Dispatch<React.SetStateAction<Player | null>>,
   id: number,
-  name: string
+  name: string,
+  shootingSpeeds: number[]
 ): Player => {
   const player: Player = {
     x,
@@ -289,8 +465,14 @@ const createPlayer = (
     isHit: false,
   };
 
-  // Интервал стрельбы
-  setInterval(() => shootSpell(player), 1000);
+  // Интервал стрельбы, привязанный к состоянию `shootingSpeeds`
+  const shootInterval = setInterval(
+    () => shootSpell(player),
+    shootingSpeeds[id - 1]
+  );
+
+  // Сохранение интервала для возможности его обновления
+  player.shootInterval = shootInterval;
 
   return player;
 };
@@ -322,7 +504,6 @@ const updatePlayer = (
   // Обновление заклинаний
   player.spells.forEach((spell, index) => {
     updateSpell(spell, context);
-
     // Проверка попадания по другому игроку
     const hitPlayer = players.find(
       (p) => p.id !== player.id && isSpellHitPlayer(spell, p)
@@ -467,38 +648,5 @@ const drawEffect = (effect: Effect, context: CanvasRenderingContext2D) => {
 };
 
 // Типы данных
-interface Player {
-  id: number;
-  x: number;
-  y: number;
-  radius: number;
-  color: string;
-  speed: number;
-  direction: number;
-  spellColor: string;
-  spells: Spell[];
-  score: number;
-  name: string;
-  isHit: boolean;
-}
-
-interface Spell {
-  x: number;
-  y: number;
-  radius: number;
-  color: string;
-  speed: number;
-  direction: number;
-}
-
-interface Effect {
-  x: number;
-  y: number;
-  radius: number;
-  maxRadius: number;
-  opacity: number;
-}
-
-type GameStatus = "play" | "pause" | "win";
 
 export { GameField };
